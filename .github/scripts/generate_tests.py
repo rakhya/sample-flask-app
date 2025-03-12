@@ -79,24 +79,37 @@ def generate_test_for_file(file_info):
     if len(content_summary) > 6000:
         content_summary = content_summary[:3000] + "\n...[content truncated]...\n" + content_summary[-3000:]
     
+    def generate_test_for_file(file_info):
+    """Generate test cases for a file using DeepSeek-R1, ensuring strict output formatting."""
+    content_summary = file_info['content']
+    
+    if len(content_summary) > 6000:
+        content_summary = content_summary[:3000] + "\n...[content truncated]...\n" + content_summary[-3000:]
+    
     prompt = f"""
-Generate pytest test cases for the following Python Flask file:
+You are a code generation assistant. Your task is to generate **only** a valid Python test file using `pytest` for the given Flask application file.
 
 **File Path:** {file_info['filepath']}
 
-**File Content Summary:**
+**File Content:**
 ```python
 {content_summary}
 ```
 
-**Requirements:**
-1. Generate pytest tests for all functions and methods.
-2. Include edge cases and invalid inputs.
-3. Use pytest fixtures if needed.
-4. Follow pytest best practices
-5. Ensure tests are isolated and independent.
+**Instructions:**
+- Generate `pytest` test cases for **all** functions and methods in the given file.
+- Ensure all necessary imports are included at the top.
+- Do **not** include explanations, reasoning, or comments that are not part of the test code.
+- Use `pytest` fixtures where needed.
+- Ensure each test is isolated and follows `pytest` best practices.
+- Strictly output only the valid test code.
 
-Output only the test file content.
+**Output Format:** 
+```python
+# Strictly valid Python test code starts here
+<test code>
+# Strictly valid Python test code ends here
+```
 """
 
     try:
