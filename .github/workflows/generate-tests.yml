@@ -34,6 +34,8 @@ jobs:
       - name: Set up Ollama and DeepSeek-R1
         run: |
           curl -fsSL https://ollama.com/install.sh | sh
+          sudo systemctl start ollama || ollama serve &
+          sleep 5  # Give Ollama some time to start
           ollama pull deepseek-r1
 
       - name: Generate tests based on changed files
