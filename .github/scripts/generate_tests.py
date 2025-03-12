@@ -79,13 +79,6 @@ def generate_test_for_file(file_info):
     if len(content_summary) > 6000:
         content_summary = content_summary[:3000] + "\n...[content truncated]...\n" + content_summary[-3000:]
     
-    def generate_test_for_file(file_info):
-    """Generate test cases for a file using DeepSeek-R1, ensuring strict output formatting."""
-    content_summary = file_info['content']
-    
-    if len(content_summary) > 6000:
-        content_summary = content_summary[:3000] + "\n...[content truncated]...\n" + content_summary[-3000:]
-    
     prompt = f"""
 You are a code generation assistant. Your task is to generate **only** a valid Python test file using `pytest` for the given Flask application file.
 
