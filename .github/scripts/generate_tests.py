@@ -1,18 +1,7 @@
 import os
 import subprocess
 import ast
-import requests
 import ollama
-
-OLLAMA_URL = "http://localhost:11434/api/tags"  # Adjust if running remotely
-
-def is_ollama_running():
-    """Check if Ollama is running to avoid unnecessary failures."""
-    try:
-        response = requests.get(OLLAMA_URL, timeout=5)
-        return response.status_code == 200
-    except requests.RequestException:
-        return False
 
 def get_changed_files():
     """Get list of changed Python files in the pull request."""
@@ -27,10 +16,10 @@ def get_changed_files():
 
 def extract_function_info(file_path):
     """Extract information about functions and classes in a Python file."""
+    with open(file_path, 'r') as f:
+        content = f.read()
+    
     try:
-        with open(file_path, 'r') as f:
-            content = f.read()
-        
         tree = ast.parse(content)
         functions = []
         classes = []
@@ -69,7 +58,12 @@ def extract_function_info(file_path):
         }
     except SyntaxError:
         print(f"Syntax error in {file_path}")
-        return None
+        return {
+            'functions': [],
+            'classes': [],
+            'filepath': file_path,
+            'content': content
+        }
 
 def generate_test_for_file(file_info):
     """Generate test cases for a file using DeepSeek-R1."""
@@ -92,27 +86,24 @@ Generate pytest test cases for the following Python Flask file:
 1. Generate pytest tests for all functions and methods.
 2. Include edge cases and invalid inputs.
 3. Use pytest fixtures if needed.
-4. Follow pytest best practices.
+4. Follow pytest best practices
 5. Ensure tests are isolated and independent.
 
 Output only the test file content.
 """
 
     try:
-        response = ollama.chat(
-            model="deepseek-r1",
-            messages=[{"role": "user", "content": prompt}],
-            timeout=30  # Prevent infinite hanging
-        )
+        response = ollama.chat(model="deepseek-r1", messages=[{"role": "user", "content": prompt}])
         test_content = response['message']['content']
-        return {
-            'original_file': file_info['filepath'],
-            'test_content': test_content,
-            'test_file': determine_test_filename(file_info['filepath'])
-        }
     except Exception as e:
         print(f"Error generating tests: {e}")
         return None
+    
+    return {
+        'original_file': file_info['filepath'],
+        'test_content': test_content,
+        'test_file': determine_test_filename(file_info['filepath'])
+    }
 
 def determine_test_filename(filepath):
     """Determine the appropriate test filename for a given file."""
@@ -142,43 +133,33 @@ def update_or_create_test_file(test_info):
 
 def main():
     """Main function to orchestrate test generation."""
-    
-    if not is_ollama_running():
-        print("❌ Ollama is not running. Exiting test generation.")
-        exit(1)
-    
     changed_files = get_changed_files()
-    print(f"🔍 Found {len(changed_files)} changed Python files")
+    print(f"Found {len(changed_files)} changed Python files")
     
     updates_made = False
     
     for file_path in changed_files:
-        print(f"📂 Analyzing {file_path}...")
+        print(f"Analyzing {file_path}...")
         file_info = extract_function_info(file_path)
         
-        if not file_info:
-            print(f"⚠️ Skipping {file_path} due to syntax errors.")
-            continue
-
         if not file_info['functions'] and not file_info['classes']:
-            print(f"ℹ️ No functions or classes found in {file_path}, skipping.")
+            print(f"No functions or classes found in {file_path}, skipping")
             continue
         
-        print(f"📝 Generating tests for {file_path}...")
+        print(f"Generating tests for {file_path}...")
         test_info = generate_test_for_file(file_info)
         
-        if not test_info:
-            print(f"⚠️ Failed to generate tests for {file_path}.")
+        if test_info is None:
             continue
         
-        print(f"📄 Updating/creating test file {test_info['test_file']}...")
+        print(f"Updating/creating test file {test_info['test_file']}...")
         if update_or_create_test_file(test_info):
             updates_made = True
     
     if updates_made:
-        print("✅ Tests generated successfully!")
+        print("Tests generated successfully!")
     else:
-        print("ℹ️ No new tests were generated.")
+        print("No new tests were generated.")
 
 if __name__ == "__main__":
     main()
