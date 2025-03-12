@@ -1,6 +1,7 @@
 import os
 import subprocess
 import ast
+import re
 import ollama
 
 def get_changed_files():
