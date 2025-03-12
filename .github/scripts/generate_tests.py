@@ -13,7 +13,13 @@ def get_changed_files():
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
     changed_files = result.stdout.strip().split('\n')
     return [f for f in changed_files if f and f.startswith('app/')]
-
+    
+def clean_generated_content(content):
+    """Remove AI reasoning, <think> sections, and merge conflict markers."""
+    content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+    content = re.sub(r'<<<<<<<.*?=======|>>>>>>>.*?', '', content, flags=re.DOTALL)
+    return content.strip()
+    
 def extract_function_info(file_path):
     """Extract information about functions and classes in a Python file."""
     with open(file_path, 'r') as f:
@@ -94,7 +100,7 @@ Output only the test file content.
 
     try:
         response = ollama.chat(model="deepseek-r1", messages=[{"role": "user", "content": prompt}])
-        test_content = response['message']['content']
+        test_content = clean_generated_content(response['message']['content'])
     except Exception as e:
         print(f"Error generating tests: {e}")
         return None
