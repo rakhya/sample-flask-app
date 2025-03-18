@@ -3,6 +3,7 @@ import subprocess
 import ast
 import re
 import ollama
+from pathlib import Path
 
 def update_requirements(test_content):
     """Extract new dependencies and update the base project's requirements.txt."""
