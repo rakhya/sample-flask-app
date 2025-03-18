@@ -4,6 +4,28 @@ import ast
 import re
 import ollama
 
+def update_requirements(test_content):
+    """Extract new dependencies and update the base project's requirements.txt."""
+    base_dir = Path(__file__).resolve().parent  # Get the base project directory
+    req_file = base_dir / "requirements.txt"  # Ensure it points to the base dir
+
+    import_lines = re.findall(r"^import (\S+)|^from (\S+) import", test_content, re.MULTILINE)
+    new_deps = {mod[0] or mod[1] for mod in import_lines if mod[0] or mod[1]}
+
+    existing_deps = set()
+    
+    if req_file.exists():
+        with open(req_file, "r") as f:
+            existing_deps = {line.strip().split("==")[0] for line in f if line.strip()}
+    
+    missing_deps = new_deps - existing_deps
+    
+    if missing_deps:
+        with open(req_file, "a") as f:
+            for dep in missing_deps:
+                f.write(f"{dep}\n")
+        print(f"Updated requirements.txt with: {', '.join(missing_deps)}")
+
 def get_changed_files():
     """Get list of changed Python files in the pull request."""
     if os.environ.get("GITHUB_BASE_REF"):
@@ -88,26 +110,12 @@ You are a code generation assistant. Your task is to generate **only** a valid P
 ```python
 {content_summary}
 ```
-
-**Instructions:**
-- Generate `pytest` test cases for **all** functions and methods in the given file.
-- Ensure all necessary imports are included at the top.
-- Do **not** include explanations, reasoning, or comments that are not part of the test code.
-- Use `pytest` fixtures where needed.
-- Ensure each test is isolated and follows `pytest` best practices.
-- Strictly output only the valid test code.
-
-**Output Format:** 
-```python
-# Strictly valid Python test code starts here
-<test code>
-# Strictly valid Python test code ends here
-```
 """
 
     try:
         response = ollama.chat(model="deepseek-r1", messages=[{"role": "user", "content": prompt}])
         test_content = clean_generated_content(response['message']['content'])
+        update_requirements(test_content)
     except Exception as e:
         print(f"Error generating tests: {e}")
         return None
